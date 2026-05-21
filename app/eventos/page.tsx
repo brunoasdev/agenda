@@ -462,7 +462,7 @@ export default function EventosPage() {
           evento.dataHora,
 
         local:
-          evento.local,
+          evento.local || '',
 
         bannerUrl:
           evento.bannerUrl || '',
