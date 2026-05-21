@@ -22,7 +22,7 @@ export interface Congregacao {
 export interface Evento {
   id: string;
   congregacaoId: string;
-  tipo: 'SEMANAL' | 'FESTIVIDADE';
+  tipo: string;
   titulo: string;
   tema: string;
   dataHora: string;
