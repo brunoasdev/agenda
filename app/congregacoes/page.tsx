@@ -1,239 +1,751 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { Plus, Edit, Trash2, X, Search } from 'lucide-react';
-import { Congregacao, Regiao } from '@/types';
+import {
+  useEffect,
+  useState,
+  useMemo,
+  useCallback
+} from 'react';
+
+import {
+  Plus,
+  Edit,
+  Trash2,
+  X,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Church,
+  MapPinned
+} from 'lucide-react';
+
+import { toast } from 'sonner';
+
+import {
+  Congregacao,
+  Regiao
+} from '@/types';
+
 import { congregacaoService } from '@/services/congregacaoService';
 import { regiaoService } from '@/services/regiaoService';
 
 export default function CongregacoesPage() {
-  const [congregacoes, setCongregacoes] = useState<Congregacao[]>([]);
-  const [regioes, setRegioes] = useState<Regiao[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [showForm, setShowForm] = useState(false);
+  /*
+   |--------------------------------------------------------------------------
+   | States
+   |--------------------------------------------------------------------------
+   */
 
-  const [nome, setNome] = useState('');
-  const [endereco, setEndereco] = useState('');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
-  const [regiaoId, setRegiaoId] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [congregacoes, setCongregacoes] =
+    useState<Congregacao[]>([]);
 
-  const [searchTerm, setSearchTerm] = useState('');
+  const [regioes, setRegioes] =
+    useState<Regiao[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [submitting, setSubmitting] =
+    useState(false);
+
+  const [showForm, setShowForm] =
+    useState(false);
+
+  const [editingId, setEditingId] =
+    useState<string | null>(null);
+
+  const [search, setSearch] =
+    useState('');
+
+  const [searchTerm, setSearchTerm] =
+    useState('');
+
+  const [paginaAtual, setPaginaAtual] =
+    useState(1);
+
+  const itensPorPagina = 5;
+
+  const [formData, setFormData] =
+    useState({
+      nome: '',
+      endereco: '',
+      latitude: '',
+      longitude: '',
+      regiaoId: ''
+    });
+
+  /*
+   |--------------------------------------------------------------------------
+   | Debounce Search
+   |--------------------------------------------------------------------------
+   */
 
   useEffect(() => {
-    carregarDados();
-  }, []);
+    const timeout = setTimeout(() => {
+      setSearchTerm(search);
+      setPaginaAtual(1);
+    }, 300);
 
-  const carregarDados = async () => {
+    return () => clearTimeout(timeout);
+  }, [search]);
+
+  /*
+   |--------------------------------------------------------------------------
+   | Load Data
+   |--------------------------------------------------------------------------
+   */
+
+  const carregarDados = useCallback(async () => {
     try {
       setLoading(true);
-      const [congs, regs] = await Promise.all([
-        congregacaoService.getAll(),
-        regiaoService.getAll()
-      ]);
+
+      const [congs, regs] =
+        await Promise.all([
+          congregacaoService.getAll(),
+          regiaoService.getAll()
+        ]);
+
       setCongregacoes(congs);
       setRegioes(regs);
     } catch (error) {
       console.error(error);
+
+      toast.error(
+        'Erro ao carregar congregações'
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const congregacoesFiltradas = useMemo(() => {
-    if (!searchTerm.trim()) return congregacoes;
-    const term = searchTerm.toLowerCase().trim();
-    return congregacoes.filter(cong => 
-      cong.nome.toLowerCase().includes(term)
-    );
-  }, [congregacoes, searchTerm]);
+  useEffect(() => {
+    carregarDados();
+  }, [carregarDados]);
 
-  const abrirFormulario = () => {
-    limparFormulario();
-    setShowForm(true);
-  };
+  /*
+   |--------------------------------------------------------------------------
+   | Filter
+   |--------------------------------------------------------------------------
+   */
 
-  const fecharFormulario = () => {
-    limparFormulario();
-    setShowForm(false);
-  };
+  const congregacoesFiltradas =
+    useMemo(() => {
+      if (!searchTerm.trim())
+        return congregacoes;
 
-  const limparFormulario = () => {
-    setNome('');
-    setEndereco('');
-    setLatitude('');
-    setLongitude('');
-    setRegiaoId('');
-    setEditingId(null);
-  };
+      const term = searchTerm
+        .toLowerCase()
+        .trim();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+      return congregacoes.filter(
+        (cong) =>
+          cong.nome
+            .toLowerCase()
+            .includes(term)
+      );
+    }, [congregacoes, searchTerm]);
+
+  /*
+   |--------------------------------------------------------------------------
+   | Pagination
+   |--------------------------------------------------------------------------
+   */
+
+  const totalPaginas = Math.ceil(
+    congregacoesFiltradas.length /
+      itensPorPagina
+  );
+
+  const congregacoesPaginadas =
+    useMemo(() => {
+      const inicio =
+        (paginaAtual - 1) *
+        itensPorPagina;
+
+      const fim =
+        inicio + itensPorPagina;
+
+      return congregacoesFiltradas.slice(
+        inicio,
+        fim
+      );
+    }, [
+      congregacoesFiltradas,
+      paginaAtual
+    ]);
+
+  /*
+   |--------------------------------------------------------------------------
+   | Form
+   |--------------------------------------------------------------------------
+   */
+
+  const limparFormulario =
+    useCallback(() => {
+      setFormData({
+        nome: '',
+        endereco: '',
+        latitude: '',
+        longitude: '',
+        regiaoId: ''
+      });
+
+      setEditingId(null);
+    }, []);
+
+  const abrirFormulario =
+    useCallback(() => {
+      limparFormulario();
+      setShowForm(true);
+
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }, [limparFormulario]);
+
+  const fecharFormulario =
+    useCallback(() => {
+      limparFormulario();
+      setShowForm(false);
+    }, [limparFormulario]);
+
+  /*
+   |--------------------------------------------------------------------------
+   | Submit
+   |--------------------------------------------------------------------------
+   */
+
+  const handleSubmit = async (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
-    if (!nome || !endereco || !regiaoId) return;
 
-    setSubmitting(true);
+    if (
+      !formData.nome ||
+      !formData.endereco ||
+      !formData.regiaoId
+    )
+      return;
+
     try {
+      setSubmitting(true);
+
       const data = {
-        nome: nome.trim(),
-        endereco: endereco.trim(),
-        latitude: parseFloat(latitude) || 0,
-        longitude: parseFloat(longitude) || 0,
-        regiaoId
+        nome: formData.nome.trim(),
+        endereco:
+          formData.endereco.trim(),
+        latitude:
+          parseFloat(
+            formData.latitude
+          ) || 0,
+        longitude:
+          parseFloat(
+            formData.longitude
+          ) || 0,
+        regiaoId:
+          formData.regiaoId
       };
 
       if (editingId) {
-        await congregacaoService.update(editingId, data);
+        await congregacaoService.update(
+          editingId,
+          data
+        );
+
+        setCongregacoes((prev) =>
+          prev.map((item) =>
+            item.id === editingId
+              ? {
+                  ...item,
+                  ...data
+                }
+              : item
+          )
+        );
+
+        toast.success(
+          'Congregação atualizada'
+        );
       } else {
-        await congregacaoService.create(data);
+        const nova =
+          await congregacaoService.create(
+            data
+          );
+
+        setCongregacoes((prev) => [
+          nova,
+          ...prev
+        ]);
+
+        toast.success(
+          'Congregação cadastrada'
+        );
       }
 
       fecharFormulario();
-      carregarDados();
     } catch (error) {
       console.error(error);
-      alert("Erro ao salvar congregação");
+
+      toast.error(
+        'Erro ao salvar congregação'
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleEdit = (cong: Congregacao) => {
-    setNome(cong.nome);
-    setEndereco(cong.endereco);
-    setLatitude(cong.latitude.toString());
-    setLongitude(cong.longitude.toString());
-    setRegiaoId(cong.regiaoId);
-    setEditingId(cong.id);
-    setShowForm(true);
-  };
+  /*
+   |--------------------------------------------------------------------------
+   | Edit
+   |--------------------------------------------------------------------------
+   */
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta congregação?')) return;
-    try {
-      await congregacaoService.delete(id);
-      carregarDados();
-    } catch (error) {
-      alert("Erro ao excluir");
-    }
-  };
+  const handleEdit = useCallback(
+    (cong: Congregacao) => {
+      setFormData({
+        nome: cong.nome,
+        endereco: cong.endereco,
+        latitude:
+          cong.latitude.toString(),
+        longitude:
+          cong.longitude.toString(),
+        regiaoId: cong.regiaoId
+      });
+
+      setEditingId(cong.id);
+
+      setShowForm(true);
+
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    },
+    []
+  );
+
+  /*
+   |--------------------------------------------------------------------------
+   | Delete
+   |--------------------------------------------------------------------------
+   */
+
+  const handleDelete = useCallback(
+    async (id: string) => {
+      const confirmar =
+        window.confirm(
+          'Tem certeza que deseja excluir esta congregação?'
+        );
+
+      if (!confirmar) return;
+
+      try {
+        await congregacaoService.delete(
+          id
+        );
+
+        setCongregacoes((prev) =>
+          prev.filter(
+            (item) => item.id !== id
+          )
+        );
+
+        toast.success(
+          'Congregação excluída'
+        );
+      } catch (error) {
+        console.error(error);
+
+        toast.error(
+          'Erro ao excluir congregação'
+        );
+      }
+    },
+    []
+  );
+
+  /*
+   |--------------------------------------------------------------------------
+   | Loading
+   |--------------------------------------------------------------------------
+   */
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="flex items-center gap-3 text-zinc-400">
+          <Loader2 className="animate-spin" />
+          Carregando congregações...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4">
       <div className="max-w-5xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">Congregações</h1>
-          
+
+        {/* Header */}
+
+        <div className="flex justify-between items-center mb-8 gap-4">
+
+          <div>
+            <h1 className="text-4xl font-bold">
+              Congregações
+            </h1>
+
+            <p className="text-zinc-500 mt-2">
+              Gerencie as congregações
+            </p>
+          </div>
+
           {!showForm && (
             <button
               onClick={abrirFormulario}
-              className="bg-blue-600 hover:bg-blue-700 w-12 h-12 rounded-2xl flex items-center justify-center transition shadow-lg"
-              title="Nova Congregação"
+              className="bg-blue-600 hover:bg-blue-700 w-14 h-14 rounded-2xl flex items-center justify-center transition shadow-lg hover:scale-105"
             >
               <Plus size={28} />
             </button>
           )}
         </div>
 
-        {/* Formulário */}
+        {/* Form */}
+
         {showForm && (
-          <form onSubmit={handleSubmit} className="bg-zinc-900 p-6 rounded-2xl shadow-xl border border-zinc-800 mb-8">
-            {/* Formulário mantido igual */}
+          <form
+            onSubmit={handleSubmit}
+            className="bg-zinc-900 p-6 rounded-3xl shadow-2xl border border-zinc-800 mb-8"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <Church className="text-blue-400" />
+
+              <h2 className="text-2xl font-semibold">
+                {editingId
+                  ? 'Editar Congregação'
+                  : 'Nova Congregação'}
+              </h2>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm mb-1 text-zinc-400">Região</label>
-                <select value={regiaoId} onChange={(e) => setRegiaoId(e.target.value)} required className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3">
-                  <option value="">Selecione uma região</option>
-                  {regioes.map(r => <option key={r.id} value={r.id}>{r.nome}</option>)}
-                </select>
-              </div>
 
-              <div>
-                <label className="block text-sm mb-1 text-zinc-400">Nome da Congregação</label>
-                <input type="text" value={nome} onChange={e => setNome(e.target.value)} required className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-white" />
-              </div>
+              <select
+                required
+                disabled={submitting}
+                value={formData.regiaoId}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    regiaoId:
+                      e.target.value
+                  })
+                }
+                className="bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3"
+              >
+                <option value="">
+                  Selecione uma região
+                </option>
 
-              <div className="md:col-span-2">
-                <label className="block text-sm mb-1 text-zinc-400">Endereço</label>
-                <input type="text" value={endereco} onChange={e => setEndereco(e.target.value)} required className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-white" />
-              </div>
+                {regioes.map((r) => (
+                  <option
+                    key={r.id}
+                    value={r.id}
+                  >
+                    {r.nome}
+                  </option>
+                ))}
+              </select>
 
-              <div>
-                <label className="block text-sm mb-1 text-zinc-400">Latitude</label>
-                <input type="number" step="any" value={latitude} onChange={e => setLatitude(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-white" />
-              </div>
+              <input
+                type="text"
+                required
+                disabled={submitting}
+                placeholder="Nome da congregação"
+                value={formData.nome}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    nome:
+                      e.target.value
+                  })
+                }
+                className="bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3"
+              />
 
-              <div>
-                <label className="block text-sm mb-1 text-zinc-400">Longitude</label>
-                <input type="number" step="any" value={longitude} onChange={e => setLongitude(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-white" />
-              </div>
+              <input
+                type="text"
+                required
+                placeholder="Endereço"
+                value={formData.endereco}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    endereco:
+                      e.target.value
+                  })
+                }
+                className="md:col-span-2 bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3"
+              />
+
+              <input
+                type="number"
+                step="any"
+                placeholder="Latitude"
+                value={formData.latitude}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    latitude:
+                      e.target.value
+                  })
+                }
+                className="bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3"
+              />
+
+              <input
+                type="number"
+                step="any"
+                placeholder="Longitude"
+                value={formData.longitude}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    longitude:
+                      e.target.value
+                  })
+                }
+                className="bg-zinc-800 border border-zinc-700 rounded-2xl px-4 py-3"
+              />
             </div>
 
             <div className="flex gap-3 mt-6">
-              <button type="submit" disabled={submitting} className="flex-1 bg-blue-600 py-3.5 rounded-xl font-medium hover:bg-blue-700">
-                {submitting ? 'Salvando...' : editingId ? 'Atualizar' : 'Cadastrar'}
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 py-3 rounded-2xl"
+              >
+                {editingId
+                  ? 'Atualizar'
+                  : 'Cadastrar'}
               </button>
-              <button type="button" onClick={fecharFormulario} className="px-8 bg-zinc-800 hover:bg-zinc-700 py-3.5 rounded-xl">
-                <X size={24} />
+
+              <button
+                type="button"
+                onClick={fecharFormulario}
+                className="px-5 bg-zinc-800 hover:bg-zinc-700 rounded-2xl"
+              >
+                <X size={22} />
               </button>
             </div>
           </form>
         )}
 
-        {/* Campo de Pesquisa - Agora abaixo do formulário */}
+        {/* Search */}
+
         <div className="mb-6 relative">
           <div className="absolute left-4 top-3.5 text-zinc-500">
             <Search size={20} />
           </div>
+
           <input
             type="text"
-            placeholder="Buscar congregação por nome..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-xl pl-12 py-3 text-white placeholder:text-zinc-500 focus:outline-none focus:border-blue-500"
+            placeholder="Buscar congregação..."
+            value={search}
+            onChange={(e) =>
+              setSearch(e.target.value)
+            }
+            className="w-full bg-zinc-900 border border-zinc-700 rounded-2xl pl-12 py-3"
           />
         </div>
 
-        {/* Lista */}
-        <div className="bg-zinc-900 rounded-2xl shadow-xl border border-zinc-800">
+        {/* List */}
+
+        <div className="bg-zinc-900 rounded-3xl shadow-2xl border border-zinc-800 overflow-hidden">
+
           <div className="p-6 border-b border-zinc-800">
             <h2 className="text-xl font-semibold">
-              Congregações Cadastradas ({congregacoesFiltradas.length})
+              Congregações (
+              {
+                congregacoesFiltradas.length
+              }
+              )
             </h2>
           </div>
 
           <div className="divide-y divide-zinc-800">
-            {congregacoesFiltradas.map(cong => {
-              const regiao = regioes.find(r => r.id === cong.regiaoId);
-              return (
-                <div key={cong.id} className="p-6 hover:bg-zinc-800/50 transition">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-semibold">{cong.nome}</h3>
-                      <p className="text-zinc-400 mt-1">{cong.endereco}</p>
-                      <p className="text-sm text-zinc-500 mt-2">
-                        Região: <span className="text-blue-400">{regiao?.nome}</span>
-                      </p>
-                    </div>
 
-                    <div className="flex gap-6 text-2xl">
-                      <button onClick={() => handleEdit(cong)} className="text-blue-400 hover:text-blue-500 hover:scale-125 transition-all" title="Editar">
-                        <Edit size={22} />
-                      </button>
-                      <button onClick={() => handleDelete(cong.id)} className="text-red-400 hover:text-red-500 hover:scale-125 transition-all" title="Excluir">
-                        <Trash2 size={22} />
-                      </button>
+            {congregacoesPaginadas.map(
+              (cong) => {
+                const regiao =
+                  regioes.find(
+                    (r) =>
+                      r.id ===
+                      cong.regiaoId
+                  );
+
+                return (
+                  <div
+                    key={cong.id}
+                    className="p-6 hover:bg-zinc-800/40 transition-all duration-300"
+                  >
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+
+                      <div className="flex items-start gap-4">
+
+                        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                          <Church
+                            size={22}
+                            className="text-blue-400"
+                          />
+                        </div>
+
+                        <div>
+
+                          <div className="flex items-center gap-3 flex-wrap">
+
+                            <h3 className="text-xl font-semibold">
+                              {cong.nome}
+                            </h3>
+
+                            <span className="bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full text-sm">
+                              {
+                                regiao?.nome
+                              }
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 text-zinc-400 mt-3">
+                            <MapPinned
+                              size={16}
+                            />
+
+                            <p className="text-sm">
+                              {
+                                cong.endereco
+                              }
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+
+                        <button
+                          onClick={() =>
+                            handleEdit(
+                              cong
+                            )
+                          }
+                          className="w-11 h-11 rounded-2xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 flex items-center justify-center"
+                        >
+                          <Edit size={20} />
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            handleDelete(
+                              cong.id
+                            )
+                          }
+                          className="w-11 h-11 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              }
+            )}
 
-            {congregacoesFiltradas.length === 0 && (
-              <p className="p-12 text-center text-zinc-500">
-                {searchTerm ? `Nenhuma congregação encontrada para "${searchTerm}"` : "Nenhuma congregação cadastrada ainda."}
-              </p>
+            {congregacoesFiltradas.length ===
+              0 && (
+              <div className="p-16 text-center">
+
+                <Church
+                  size={60}
+                  className="mx-auto text-zinc-700 mb-5"
+                />
+
+                <h3 className="text-2xl font-semibold text-zinc-300">
+                  Nenhuma congregação encontrada
+                </h3>
+              </div>
+            )}
+
+            {/* Pagination */}
+
+            {totalPaginas > 1 && (
+              <div className="flex items-center justify-center gap-2 p-6 border-t border-zinc-800 flex-wrap">
+
+                <button
+                  onClick={() =>
+                    setPaginaAtual((prev) =>
+                      Math.max(prev - 1, 1)
+                    )
+                  }
+                  disabled={
+                    paginaAtual === 1
+                  }
+                  className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-zinc-800"
+                >
+                  <ChevronLeft
+                    size={18}
+                  />
+
+                  Anterior
+                </button>
+
+                {Array.from({
+                  length: totalPaginas
+                }).map((_, index) => {
+                  const pagina =
+                    index + 1;
+
+                  return (
+                    <button
+                      key={pagina}
+                      onClick={() =>
+                        setPaginaAtual(
+                          pagina
+                        )
+                      }
+                      className={`w-11 h-11 rounded-2xl ${
+                        paginaAtual ===
+                        pagina
+                          ? 'bg-blue-600'
+                          : 'bg-zinc-800'
+                      }`}
+                    >
+                      {pagina}
+                    </button>
+                  );
+                })}
+
+                <button
+                  onClick={() =>
+                    setPaginaAtual((prev) =>
+                      Math.min(
+                        prev + 1,
+                        totalPaginas
+                      )
+                    )
+                  }
+                  disabled={
+                    paginaAtual ===
+                    totalPaginas
+                  }
+                  className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-zinc-800"
+                >
+                  Próxima
+
+                  <ChevronRight
+                    size={18}
+                  />
+                </button>
+              </div>
             )}
           </div>
         </div>
