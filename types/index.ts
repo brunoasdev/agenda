@@ -24,7 +24,7 @@ export interface Evento {
   congregacaoId: string;
   tipo: string;
   titulo: string;
-  tema: string;
+  tema?: string;
   dataHora: string;
   local?: string;
   

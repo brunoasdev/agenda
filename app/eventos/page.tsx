@@ -898,18 +898,14 @@ export default function EventosPage() {
                   <input
                     type="text"
                     placeholder="URL do banner"
-                    value={
-                      formData.bannerUrl
-                    }
+                    value={formData.bannerUrl}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        bannerUrl:
-                          e.target.value
+                        bannerUrl: e.target.value
                       })
                     }
                     className="
-                      md:col-span-2
                       bg-zinc-800
                       border
                       border-zinc-700
@@ -922,18 +918,14 @@ export default function EventosPage() {
                   <input
                     type="text"
                     placeholder="URL do vídeo de divulgação"
-                    value={
-                      formData.videoDivulgUrl
-                    }
+                    value={formData.videoDivulgUrl}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        videoDivulgUrl:
-                          e.target.value
+                        videoDivulgUrl: e.target.value
                       })
                     }
                     className="
-                      md:col-span-2
                       bg-zinc-800
                       border
                       border-zinc-700
