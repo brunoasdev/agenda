@@ -21,6 +21,12 @@ export default function Home() {
           >
             ⛪ Gerenciar Congregações
           </Link>
+          <Link
+            href="/eventos"
+            className="block bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white text-xl py-5 px-10 rounded-2xl transition w-96 mx-auto"
+          >
+            Gerenciar Eventos
+          </Link>
         </div>
       </div>
     </main>
